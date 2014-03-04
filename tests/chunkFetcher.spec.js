@@ -25,33 +25,33 @@ describe('ChunkFetcher', function(){
 
         httpUtilities.reset();
 
-        var LAST_API_URL = 'http://api.stackoverflow.com/1.1/users?&pagesize=10&page=2';
+        var LAST_API_URL = 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow&pagesize=10&page=2';
         //last request, reached the end
         httpUtilities.addToResponseQueue(LAST_API_URL, {
-            users: []
+            items: []
         });
 
-        var FIRST_API_URL = 'http://api.stackoverflow.com/1.1/users?&pagesize=10&page=1';
+        var FIRST_API_URL = 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow&pagesize=10&page=1';
         //first request
         httpUtilities.addToResponseQueue(FIRST_API_URL, {
-            users: [{user_id: 1}]
+            items: [{user_id: 1}]
         });
 
-        var FIRST_USER_TAG_URL = 'http://api.stackoverflow.com/1.1/users/1/top-answer-tags?&pagesize=30&page=1'
+        var FIRST_USER_TAG_URL = 'http://api.stackexchange.com/2.2/users/1/top-answer-tags?site=stackoverflow&pagesize=30&page=1'
 
         httpUtilities.addToResponseQueue(FIRST_USER_TAG_URL, {
-            top_tags: ['foo']
+            items: ['foo']
         });
 
         //the user does not already exists
         postgresDbStoreMock.addToResponseQueue(1, false);
 
         var chunkFetcher = new ChunkFetcher({
-            url: 'http://api.stackoverflow.com/1.1/users?',
-            key: 'users',
+            url: 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow',
+            key: 'items',
             pageSize: 10,
             maxLength: 20000,
-            interceptor: new UserTagInterceptor(postgresDbStoreMock),
+            interceptor: new UserTagInterceptor(postgresDbStoreMock, 'stackoverflow'),
             //store: PostgresDbStore
         })
         .fetch()
@@ -76,19 +76,19 @@ describe('ChunkFetcher', function(){
 
         httpUtilities.reset();
 
-        var LAST_API_URL = 'http://api.stackoverflow.com/1.1/users?&pagesize=10&page=2';
+        var LAST_API_URL = 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow&pagesize=10&page=2';
         //last request, reached the end
         httpUtilities.addToResponseQueue(LAST_API_URL, {
-            users: []
+            items: []
         });
 
-        var FIRST_API_URL = 'http://api.stackoverflow.com/1.1/users?&pagesize=10&page=1';
+        var FIRST_API_URL = 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow&pagesize=10&page=1';
         //first request
         httpUtilities.addToResponseQueue(FIRST_API_URL, {
-            users: [{user_id: 1}]
+            items: [{user_id: 1}]
         });
 
-        var FIRST_USER_TAG_URL = 'http://api.stackoverflow.com/1.1/users/1/top-answer-tags?&pagesize=30&page=1'
+        var FIRST_USER_TAG_URL = 'http://api.stackexchange.com/2.2/users/1/top-answer-tags?site=stackoverflow&pagesize=30&page=1'
 
         httpUtilities.addToResponseQueue(FIRST_USER_TAG_URL, {
             top_tags: ['foo']
@@ -98,11 +98,11 @@ describe('ChunkFetcher', function(){
         postgresDbStoreMock.addToResponseQueue(1, true);
 
         var chunkFetcher = new ChunkFetcher({
-            url: 'http://api.stackoverflow.com/1.1/users?',
-            key: 'users',
+            url: 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow',
+            key: 'items',
             pageSize: 10,
             maxLength: 20000,
-            interceptor: new UserTagInterceptor(postgresDbStoreMock),
+            interceptor: new UserTagInterceptor(postgresDbStoreMock, 'stackoverflow'),
             //store: PostgresDbStore
         })
         .fetch()
@@ -125,24 +125,24 @@ describe('ChunkFetcher', function(){
 
         httpUtilities.reset();
 
-        var LAST_API_URL = 'http://api.stackoverflow.com/1.1/users?&pagesize=10&page=2';
+        var LAST_API_URL = 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow&pagesize=10&page=2';
         //last request, reached the end
         httpUtilities.addToResponseQueue(LAST_API_URL, {
-            users: []
+            items: []
         });
 
         //second request
         httpUtilities.addToResponseQueue(LAST_API_URL, httpUtilities.failWith('timeout'));
 
-        var FIRST_API_URL = 'http://api.stackoverflow.com/1.1/users?&pagesize=10&page=1';
+        var FIRST_API_URL = 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow&pagesize=10&page=1';
         //first request
         httpUtilities.addToResponseQueue(FIRST_API_URL, {
-            users: [{user_id: 1}]
+            items: [{user_id: 1}]
         });
 
         var chunkFetcher = new ChunkFetcher({
-            url: 'http://api.stackoverflow.com/1.1/users?',
-            key: 'users',
+            url: 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow',
+            key: 'items',
             pageSize: 10,
             maxLength: 20000,
             waitAfterErrorMs: 100
@@ -169,25 +169,25 @@ describe('ChunkFetcher', function(){
 
         httpUtilities.reset();
 
-        var LAST_API_URL = 'http://api.stackoverflow.com/1.1/users?&pagesize=10&page=2';
+        var LAST_API_URL = 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow&pagesize=10&page=2';
         //last request, reached the end
         httpUtilities.addToResponseQueue(LAST_API_URL, {
-            users: []
+            items: []
         });
 
         //second request
         httpUtilities.addToResponseQueue(LAST_API_URL, httpUtilities.failWith('timeout'));
 
-        var FIRST_API_URL = 'http://api.stackoverflow.com/1.1/users?&pagesize=10&page=1';
+        var FIRST_API_URL = 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow&pagesize=10&page=1';
         //first request
         httpUtilities.addToResponseQueue(FIRST_API_URL, {
-            users: [{user_id: 1}]
+            items: [{user_id: 1}]
         });
 
-        var LAST_USER_TAG_URL = 'http://api.stackoverflow.com/1.1/users/1/top-answer-tags?&pagesize=30&page=1'
+        var LAST_USER_TAG_URL = 'http://api.stackexchange.com/2.2/users/1/top-answer-tags?site=stackoverflow&pagesize=30&page=1'
 
         httpUtilities.addToResponseQueue(LAST_USER_TAG_URL, {
-            top_tags: ['foo']
+            items: ['foo']
         });
 
         httpUtilities.addToResponseQueue(LAST_USER_TAG_URL, httpUtilities.failWith('timeout'));
@@ -196,12 +196,12 @@ describe('ChunkFetcher', function(){
         postgresDbStoreMock.addToResponseQueue(1, false);
 
         var chunkFetcher = new ChunkFetcher({
-            url: 'http://api.stackoverflow.com/1.1/users?',
-            key: 'users',
+            url: 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow',
+            key: 'items',
             pageSize: 10,
             maxLength: 20000,
             waitAfterErrorMs: 100,
-            interceptor: new UserTagInterceptor(postgresDbStoreMock)
+            interceptor: new UserTagInterceptor(postgresDbStoreMock, 'stackoverflow')
             //store: PostgresDbStore
         })
         .fetch()
@@ -226,10 +226,10 @@ describe('ChunkFetcher', function(){
 
         httpUtilities.reset();
 
-        var LAST_API_URL = 'http://api.stackoverflow.com/1.1/users?&pagesize=10&page=2';
+        var LAST_API_URL = 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow&pagesize=10&page=2';
         //last request, reached the end
         httpUtilities.addToResponseQueue(LAST_API_URL, {
-            users: []
+            items: []
         });
 
         //third request
@@ -238,15 +238,15 @@ describe('ChunkFetcher', function(){
         //second request
         httpUtilities.addToResponseQueue(LAST_API_URL, httpUtilities.failWith('timeout'));
 
-        var FIRST_API_URL = 'http://api.stackoverflow.com/1.1/users?&pagesize=10&page=1';
+        var FIRST_API_URL = 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow&pagesize=10&page=1';
         //first request
         httpUtilities.addToResponseQueue(FIRST_API_URL, {
-            users: [{user_id: 1}]
+            items: [{user_id: 1}]
         });
 
         var chunkFetcher = new ChunkFetcher({
-            url: 'http://api.stackoverflow.com/1.1/users?',
-            key: 'users',
+            url: 'http://api.stackexchange.com/2.2/users?order=desc&site=stackoverflow',
+            key: 'items',
             pageSize: 10,
             maxLength: 20000,
             waitAfterErrorMs: 100,
