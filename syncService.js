@@ -100,7 +100,7 @@ function SyncService (options) {
                     key: 'items',
                     pageSize: PAGE_SIZE,
                     maxLength: 20000,
-                    interceptor: new UserTagInterceptor(new ConnectedPostgresDbStore()),
+                    interceptor: new UserTagInterceptor(new ConnectedPostgresDbStore(), options.stackexchangeSite),
                     store: ConnectedPostgresDbStore
                 })
                 .fetch()
