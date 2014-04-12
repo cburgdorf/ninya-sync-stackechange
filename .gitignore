@@ -9,3 +9,4 @@ build.xml
 .sass-cache
 app/css/*
 node_modules
+npm-debug.log

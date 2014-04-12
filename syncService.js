@@ -1,7 +1,7 @@
-/* options.liveTable = users,
-   options.workingTable = users_working,
-   options.backupTable = users_backup,
-   options.dbConnectionString,
+/*
+   options.elasticsearchEndpoint,
+   options.index: 'production_v4',
+   options.stackexchangeSite = 'stackoverflow,'
    options.maxEntityCount = 150000,
    options.pageSize = 10,
    options.maxRunTime = 9 * 60 * 1000
@@ -9,29 +9,34 @@
 
 function SyncService (options) {
 
-    var SyncService = require('./sync/syncService.js');
-    var UserRepository = require('./sync/userRepository.js');
-    
+    var syncApi = require('ninya-sync-api');
+
     var ChunkFetcher = require('./chunkFetcher/chunkFetcher.js');
-    var PostgresDbStore = require('./chunkFetcher/postgresdbStore.js');
+    var SyncApiStore = require('./chunkFetcher/syncApiStore.js');
     var UserTagInterceptor = require('./interceptor/userTagInterceptor.js');
     var https = require('https');
-    var pg = require('pg').native;
 
-    var ConnectedPostgresDbStore = function(){
-        return new PostgresDbStore(options.dbConnectionString);
+    var infoConnectionFactory = new syncApi.factories.ElasticSearchConnectionFactory({
+        elasticsearchEndpoint: options.elasticsearchEndpoint,
+        index:                 options.index,
+        type:                  'info'
+    });
+
+    var entityConnectionFactory = new syncApi.factories.ElasticSearchConnectionFactory({
+        elasticsearchEndpoint: options.elasticsearchEndpoint,
+        index:                 options.index,
+        type:                  'user'
+    });
+
+    var _syncService = new syncApi.SyncService({
+        syncInfoRepository: new syncApi.repositories.ElasticSearchRepository(infoConnectionFactory),
+        entityRepository: new syncApi.repositories.ElasticSearchRepository(entityConnectionFactory),
+        lastEntityResolver: new syncApi.resolvers.LowestReputationResolver(entityConnectionFactory)
+    });
+
+    var ConnectedSyncApiStore = function(){
+        return new SyncApiStore(_syncService);
     };
-
-    var USERS_LIVE_TABLE    = options.liveTable,
-        USERS_WORKING_TABLE = options.workingTable,
-        USERS_BACKUP_TABLE  = options.backupTable;
-
-    var syncService = new SyncService(
-        new UserRepository(options.dbConnectionString, USERS_LIVE_TABLE),
-        new UserRepository(options.dbConnectionString, USERS_WORKING_TABLE),
-        new UserRepository(options.dbConnectionString, USERS_BACKUP_TABLE));
-
-    syncService.MAX_USER_COUNT = options.maxEntityCount;
 
     var PAGE_SIZE = options.pageSize,
         MAX_RUN_TIME_MS = options.maxRunTime;
@@ -47,74 +52,86 @@ function SyncService (options) {
         process.exit(0);
     }, MAX_RUN_TIME_MS);
 
+
+    var getTarget = function(){
+        return options.stackexchangeSite + '_production';
+    };
+
     var rebuild = function(){
-        new ChunkFetcher({
-            url: 'http://api.stackexchange.com/2.2/users?order=desc&site=' + options.stackexchangeSite,
-            key: 'items',
-            pageSize: PAGE_SIZE,
-            maxLength: 20000,
-            interceptor: new UserTagInterceptor(new ConnectedPostgresDbStore(), options.stackexchangeSite),
-            store: ConnectedPostgresDbStore
-        })
-        .fetch()
-        .then(function(users){
-            console.log(users);
-        });
-    };
-    
-    var safeResume = function(){
-        syncService
-            .isReadyForMigration()
-            .then(function(isReady){
-                if (isReady){
-                    syncService
-                        .migrate()
-                        .then(function(){
-                            resume();
-                        });
-                }
-                else{
-                    resume();
-                }
-            });
-    };
 
-    var resume = function(){
-        pg.connect(options.dbConnectionString, function(err, client, done) {
-            if(err) {
-                return console.error('error fetching client from pool', err);
-            }
-
-            client.query('SELECT "user"->\'reputation\' as reputation from users_working ORDER BY ("user"->>\'reputation\')::int LIMIT 1', function(err, result) {
-                done();
-
-                if (result.rows.length === 0){
-                    rebuild();
-                    return;
-                }
-
-                var reputation = result.rows[0].reputation;
+        _syncService
+            .sync({ target: getTarget() })
+            .then(function(syncInfo) {
 
                 new ChunkFetcher({
-                    url: 'http://api.stackexchange.com/2.2/users?order=desc&site=' + options.stackexchangeSite + '&max=' + reputation,
+                    url: 'http://api.stackexchange.com/2.2/users?order=desc&site=' + options.stackexchangeSite,
                     key: 'items',
                     pageSize: PAGE_SIZE,
                     maxLength: 20000,
-                    interceptor: new UserTagInterceptor(new ConnectedPostgresDbStore(), options.stackexchangeSite),
-                    store: ConnectedPostgresDbStore
+                    interceptor: new UserTagInterceptor(new ConnectedSyncApiStore(), options.stackexchangeSite),
+                    store: ConnectedSyncApiStore
                 })
                 .fetch()
                 .then(function(users){
                     console.log(users);
                 });
-
-                if(err) {
-                    return console.error('error running query', err);
-                }
-
             });
-        });
+    };
 
+    var safeResume = function(){
+
+        _syncService
+            .sync({ target: getTarget() })
+            .then(function(syncInfo){
+                if (syncInfo.count >= options.maxEntityCount) {
+                    _syncService
+                        .remove()
+                        .then(function(){
+                            rebuild();
+                        });
+                }
+                else if (syncInfo.count === 0) {
+                    rebuild();
+                }
+                else {
+                    resume();
+                }
+            }, function(error){
+                console.log(error);
+            });
+    };
+
+    var resume = function(){
+
+        _syncService
+            .sync({ target: getTarget() })
+            .then(function(syncInfo){
+                if (syncInfo.empty){
+                    // this should be exceptional
+                    rebuild();
+                }
+                else if(!syncInfo.data || !syncInfo.data.reputation){
+                    throw new Error('Corrupt sync. Can not resolve reentry point');
+                }
+                else {
+                    var reputation = syncInfo.data.reputation;
+
+                    new ChunkFetcher({
+                        url: 'http://api.stackexchange.com/2.2/users?order=desc&site=' + options.stackexchangeSite + '&max=' + reputation,
+                        key: 'items',
+                        pageSize: PAGE_SIZE,
+                        maxLength: 20000,
+                        interceptor: new UserTagInterceptor(new ConnectedSyncApiStore(), options.stackexchangeSite),
+                        store: ConnectedSyncApiStore
+                    })
+                    .fetch()
+                    .then(function(users){
+                        console.log(users);
+                    });
+                }
+            }, function (error) {
+                console.log(error);
+            });
     };
 
     return{

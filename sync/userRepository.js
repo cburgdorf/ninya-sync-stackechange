@@ -4,7 +4,7 @@ var pg = require('pg').native;
 var UserRepository = function(dbConnectionString, name){
     var self = {},
         users = [];
-    
+
     self.getName = function(){
         return name;
     };
