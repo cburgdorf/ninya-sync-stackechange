@@ -7,7 +7,7 @@
    options.maxRunTime = 9 * 60 * 1000
 */
 
-function SyncService (options) {
+function StackExchangeSync (options) {
 
     var syncApi = require('ninya-sync-api');
 
@@ -141,4 +141,4 @@ function SyncService (options) {
     }
 };
 
-module.exports = SyncService;
+module.exports = StackExchangeSync;

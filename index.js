@@ -1,1 +1,1 @@
-module.exports = require('./syncService.js');
+module.exports = require('./stackExchangeSync.js');
